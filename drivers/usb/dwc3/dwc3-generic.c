@@ -310,6 +310,9 @@ static int dwc3_generic_host_remove(struct udevice *dev)
 	if (rc)
 		debug("%s: Failed to disable vbus regulator: %d\n", dev->name, rc);
 
+	/* Update usb host state */
+	usb_started = false;
+
 	return dwc3_generic_remove(dev, &priv->gen_priv);
 }
 
