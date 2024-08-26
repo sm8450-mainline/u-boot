@@ -216,11 +216,16 @@ static int dwc3_generic_of_to_plat(struct udevice *dev)
 		plat->maximum_speed = USB_SPEED_SUPER;
 	}
 
-	plat->dr_mode = dwc3_get_preferred_dr_mode(node);
-	if (plat->dr_mode == USB_DR_MODE_UNKNOWN) {
-		pr_err("Invalid usb mode setup\n");
-		return -ENODEV;
-	}
+	/*
+	 * Override dr_mode based on whether host or gadget mode
+	 * is in use
+	 */
+	if (device_get_uclass_id(dev) == UCLASS_USB)
+		plat->dr_mode = USB_DR_MODE_HOST;
+	else
+	 	plat->dr_mode = USB_DR_MODE_PERIPHERAL;
+
+	debug("%s: dr_mode=%d\n", dev->name, plat->dr_mode);
 
 	return 0;
 }
@@ -575,10 +580,9 @@ struct dwc3_glue_ops rk_ops = {
 static int dwc3_glue_bind_common(struct udevice *parent, ofnode node)
 {
 	const char *name = ofnode_get_name(node);
-	const char *driver;
 	enum usb_dr_mode dr_mode;
 	struct udevice *dev;
-	int ret;
+	int ret, any = 0;
 
 	debug("%s: subnode name: %s\n", __func__, name);
 
@@ -587,21 +591,31 @@ static int dwc3_glue_bind_common(struct udevice *parent, ofnode node)
 	if (CONFIG_IS_ENABLED(DM_USB_GADGET) &&
 	    (dr_mode == USB_DR_MODE_PERIPHERAL || dr_mode == USB_DR_MODE_OTG)) {
 		debug("%s: dr_mode: OTG or Peripheral\n", __func__);
-		driver = "dwc3-generic-peripheral";
-	} else if (CONFIG_IS_ENABLED(USB_HOST) && dr_mode == USB_DR_MODE_HOST) {
+		any = 1;
+		ret = device_bind_driver_to_node(parent, "dwc3-generic-peripheral", name,
+					 node, &dev);
+		if (ret) {
+			debug("%s: not able to bind usb device mode\n",
+			__func__);
+			return ret;
+		}
+	}
+	if (CONFIG_IS_ENABLED(USB_HOST) &&
+	    (dr_mode == USB_DR_MODE_HOST || dr_mode == USB_DR_MODE_OTG)) {
 		debug("%s: dr_mode: HOST\n", __func__);
-		driver = "dwc3-generic-host";
-	} else {
-		debug("%s: unsupported dr_mode %d\n", __func__, dr_mode);
-		return -ENODEV;
+		any = 1;
+		ret = device_bind_driver_to_node(parent, "dwc3-generic-host", name,
+					 node, &dev);
+		if (ret) {
+			debug("%s: not able to bind usb device mode\n",
+			__func__);
+			return ret;
+		}
 	}
 
-	ret = device_bind_driver_to_node(parent, driver, name,
-					 node, &dev);
-	if (ret) {
-		debug("%s: not able to bind usb device mode\n",
-		      __func__);
-		return ret;
+	if (!any) {
+		debug("%s: unsupported dr_mode %d\n", __func__, dr_mode);
+		return -ENODEV;
 	}
 
 	return 0;
@@ -678,6 +692,29 @@ static int dwc3_glue_clk_init(struct udevice *dev,
 		return ret;
 	}
 #endif
+
+	return 0;
+}
+
+int dwc3_glue_child_pre_probe(struct udevice *child)
+{
+	struct udevice *dev;
+	int ret;
+
+	/*
+	 * Only one child can be probed at once - either gadget or host driver
+	 * so make sure to remove the other one.
+	 */
+	device_foreach_child(dev, child->parent) {
+		if (dev != child) {
+			ret = device_remove(dev, DM_REMOVE_NORMAL);
+			if (ret) {
+				debug("Failed to remove device %s\n", dev->name);
+				return ret;
+			}
+			debug("Removed %s for %s\n", dev->driver->name, dev->name);
+		}
+	}
 
 	return 0;
 }
@@ -782,6 +819,7 @@ U_BOOT_DRIVER(dwc3_generic_wrapper) = {
 	.bind = dwc3_glue_bind,
 	.probe = dwc3_glue_probe,
 	.remove = dwc3_glue_remove,
+	.child_pre_probe = dwc3_glue_child_pre_probe,
 	.plat_auto	= sizeof(struct dwc3_glue_data),
 
 };
