@@ -13,5 +13,6 @@ CONFIG_TEXT_BASE=0x1c00e000
 CONFIG_DEFAULT_ENV_FILE="board/qualcomm/cdba-tfa.env"
 
 # Optimise for SPEEEED
+CONFIG_DFU_SCSI=n
 CONFIG_SCSI=n
 
