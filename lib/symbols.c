@@ -120,7 +120,9 @@ const char *symbols_lookup(unsigned long addr, unsigned long *symaddr, unsigned 
 	/* Grab name */
 	symbols_expand_symbol(get_symbol_offset(low), namebuf);
 
-	*symaddr = symbols_address(low);
-	*offset = addr - symbols_address(low);
+	if (symaddr)
+		*symaddr = symbols_address(low);
+	if (offset)
+		*offset = addr - symbols_address(low);
 	return namebuf;
 }
