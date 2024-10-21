@@ -9,6 +9,7 @@
 #define LOG_CATEGORY LOGC_BOARD
 #define pr_fmt(fmt) "Snapdragon: " fmt
 
+#include <atf_common.h>
 #include <asm/armv8/mmu.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -72,6 +73,20 @@ void *board_fdt_blob_setup(int *err)
 	fdt = (struct fdt_header *)get_prev_bl_fdt_addr();
 	external_valid = fdt && !fdt_check_header(fdt);
 	internal_valid = !fdt_check_header(gd->fdt_blob);
+
+	if (fdt && !external_valid && current_el() == 3) {
+		//print_hex_dump_bytes("r0: ", DUMP_PREFIX_OFFSET, fdt, 0x200);
+		printf("Booting as TF-A!\n");
+		struct bl_params *params = (struct bl_params *)fdt;
+		struct bl_params_node *node;
+		for_each_bl_params_node(params, node) {
+			printf("Image ID: %d, type %d\n", node->image_id, node->image_info->h.type);
+			if (node->ep_info) {
+				printf("-- entry point: %#lx\n", node->ep_info->pc);
+				printf("-- spsr: %#x\n", node->ep_info->spsr);
+			}
+		}
+	}
 
 	/*
 	 * There is no point returning an error here, U-Boot can't do anything useful in this situation.
