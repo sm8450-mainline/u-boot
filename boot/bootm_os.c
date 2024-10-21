@@ -4,6 +4,7 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
+#include <atf_common.h>
 #include <bootm.h>
 #include <bootstage.h>
 #include <cpu_func.h>
@@ -408,6 +409,7 @@ static int do_bootm_elf(int flag, struct bootm_info *bmi)
 }
 #endif
 
+#if defined(CONFIG_ATF)
 static int do_bootm_atf(int flag, struct bootm_info *bmi)
 {
 	uintptr_t atf_addr = (uintptr_t)bmi->images->ep;
@@ -434,6 +436,7 @@ static int do_bootm_atf(int flag, struct bootm_info *bmi)
 
 	bl31_entry(atf_addr, bl32_entry, bl33_entry, 0);
 }
+#endif
 
 #ifdef CONFIG_INTEGRITY
 static int do_bootm_integrity(int flag, struct bootm_info *bmi)
@@ -579,7 +582,9 @@ static boot_os_fn *boot_os[] = {
 #if defined(CONFIG_BOOTM_ELF)
 	[IH_OS_ELF] = do_bootm_elf,
 #endif
+#if defined(CONFIG_ATF)
 	[IH_OS_ARM_TRUSTED_FIRMWARE] = do_bootm_atf,
+#endif
 };
 
 /* Allow for arch specific config before we boot */
