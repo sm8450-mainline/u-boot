@@ -8,6 +8,7 @@
 #include <log.h>
 #include <relocate.h>
 #include <asm/global_data.h>
+#include <symbols.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -51,6 +52,7 @@ int initcall_run_list(const init_fnc_t init_sequence[])
 {
 	ulong reloc_ofs;
 	const init_fnc_t *ptr;
+	char symbol[KSYM_NAME_LEN] = { 0 };
 	enum event_t type;
 	init_fnc_t func;
 	int ret;
@@ -59,16 +61,19 @@ int initcall_run_list(const init_fnc_t init_sequence[])
 		reloc_ofs = calc_reloc_ofs();
 		type = initcall_is_event(func);
 
+		if (!type)
+			symbols_lookup((u64)func, NULL, NULL, symbol);
+
 		if (type) {
 			if (!CONFIG_IS_ENABLED(EVENT))
 				continue;
 			debug("initcall: event %d/%s\n", type,
 			      event_type_name(type));
 		} else if (reloc_ofs) {
-			debug("initcall: %p (relocated to %p)\n",
-			      (char *)func - reloc_ofs, (char *)func);
+			debug("initcall: %p (relocated to %p) - %s\n",
+			      (char *)func - reloc_ofs, (char *)func, symbol);
 		} else {
-			debug("initcall: %p\n", (char *)func - reloc_ofs);
+			debug("initcall: %p - %s\n", (char *)func - reloc_ofs, symbol);
 		}
 
 		ret = type ? event_notify_null(type) : func();
@@ -85,14 +90,14 @@ int initcall_run_list(const init_fnc_t init_sequence[])
 				sprintf(buf, "event %d/%s", type,
 					event_type_name(type));
 			} else {
-				sprintf(buf, "call %p",
-					(char *)func - reloc_ofs);
+				sprintf(buf, "call %p - %s",
+					(char *)func - reloc_ofs, symbol);
 			}
 
 			printf("initcall failed at %s (err=%dE)\n", buf, ret);
 		} else {
-			printf("initcall failed at call %p (err=%d)\n",
-			       (char *)func - reloc_ofs, ret);
+			printf("initcall failed at call %p - %s (err=%d)\n",
+			       (char *)func - reloc_ofs, symbol, ret);
 		}
 
 		return ret;
