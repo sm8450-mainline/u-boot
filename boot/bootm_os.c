@@ -408,6 +408,33 @@ static int do_bootm_elf(int flag, struct bootm_info *bmi)
 }
 #endif
 
+static int do_bootm_atf(int flag, struct bootm_info *bmi)
+{
+	uintptr_t atf_addr = (uintptr_t)bmi->images->ep;
+	uintptr_t bl32_entry = 0;
+	uintptr_t bl33_entry = 0;
+	void *blob = bmi->images->fit_hdr_os;
+	int node = 0;
+
+	if (!blob || !CONFIG_IS_ENABLED(FIT)) {
+		printf("ATF must be part of a FIT image!\n");
+		return 1;
+	}
+
+	node = fit_image_find_os(blob, IH_OS_TEE);
+	if (node >= 0)
+		bl32_entry = fit_image_get_entry_or_load(blob, node);
+
+	node = fit_image_find_os(blob, IH_OS_U_BOOT);
+	if (node >= 0)
+		bl33_entry = fit_image_get_entry_or_load(blob, node);
+
+	debug("bl31_entry: 0x%lx, bl32_entry: 0x%lx, bl33_entry: 0x%lx\n",
+	       atf_addr, bl32_entry, bl33_entry);
+
+	bl31_entry(atf_addr, bl32_entry, bl33_entry, 0);
+}
+
 #ifdef CONFIG_INTEGRITY
 static int do_bootm_integrity(int flag, struct bootm_info *bmi)
 {
@@ -552,6 +579,7 @@ static boot_os_fn *boot_os[] = {
 #if defined(CONFIG_BOOTM_ELF)
 	[IH_OS_ELF] = do_bootm_elf,
 #endif
+	[IH_OS_ARM_TRUSTED_FIRMWARE] = do_bootm_atf,
 };
 
 /* Allow for arch specific config before we boot */
