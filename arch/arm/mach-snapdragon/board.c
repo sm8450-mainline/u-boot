@@ -47,6 +47,11 @@ static void show_psci_version(void)
 {
 	struct arm_smccc_res res;
 
+	if (current_el() == 3) {
+		debug("PSCI:  Not available in EL3\n");
+		return;
+	}
+
 	arm_smccc_smc(ARM_PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
 
 	debug("PSCI:  v%ld.%ld\n",
@@ -143,6 +148,7 @@ void __weak qcom_board_init(void)
 
 int board_init(void)
 {
+	printf("## Current EL: %d\n", current_el());
 	show_psci_version();
 	qcom_of_fixup_nodes();
 	qcom_board_init();
@@ -589,6 +595,15 @@ void enable_caches(void)
 	gd->arch.tlb_emerg = gd->arch.tlb_addr;
 	gd->arch.tlb_addr = tlb_addr;
 	gd->arch.tlb_size = tlb_size;
+
+	/*
+	 * There is some kind of issue with dcache when running
+	 * in EL3. For now just leave it disabled...
+	 */
+	if (current_el() == 3) {
+		printf("Leaving dcache disabled in EL3\n");
+		return;
+	}
 
 	/* We do the carveouts only for QCS404, for now. */
 	if (fdt_node_check_compatible(gd->fdt_blob, 0, "qcom,qcs404") == 0) {
