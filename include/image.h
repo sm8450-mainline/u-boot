@@ -1159,6 +1159,8 @@ int fit_image_get_arch(const void *fit, int noffset, uint8_t *arch);
 int fit_image_get_type(const void *fit, int noffset, uint8_t *type);
 int fit_image_get_comp(const void *fit, int noffset, uint8_t *comp);
 int fit_image_get_load(const void *fit, int noffset, ulong *load);
+uintptr_t fit_image_get_entry_or_load(const void *blob, int node);
+int fit_image_find_os(const void *blob, int os);
 int fit_image_get_entry(const void *fit, int noffset, ulong *entry);
 int fit_image_get_data(const void *fit, int noffset,
 				const void **data, size_t *size);

@@ -1449,6 +1449,7 @@ config SPL_ATF
 	bool "Support ARM Trusted Firmware"
 	depends on ARM64
 	depends on SPL_LOAD_FIT && !SPL_FIT_IMAGE_TINY
+	depends on ATF
 	help
 	  ATF(ARM Trusted Firmware) is a component for ARM AArch64 which
 	  is loaded by SPL (which is considered as BL2 in ATF terminology).

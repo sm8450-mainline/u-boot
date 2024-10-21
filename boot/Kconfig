@@ -885,6 +885,14 @@ config SUPPORT_RAW_INITRD
 	  address of the initrd must be augmented by it's size, in the following
 	  format: "<initrd address>:<initrd size>".
 
+config ATF
+	bool "Enable support for booting ARM Trusted Firmware"
+	depends on FIT
+	help
+	  Enable this to support U-Boot in BL2 mode, either as part of SPL or
+	  full U-Boot. It is typically only desirable to jump from full fat U-Boot
+	  in EL3 to TF-A during bringup/development.
+
 config CHROMEOS
 	bool "Support booting Chrome OS"
 	help

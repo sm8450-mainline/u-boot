@@ -902,6 +902,61 @@ int fit_image_get_entry(const void *fit, int noffset, ulong *entry)
 }
 
 /**
+ * fit_image_get_entry_or_load() - get entry point or load address property
+ *
+ * @blob: pointer to the FIT image header
+ * @node: node offset of the image
+ *
+ * Retrive either the entry point of an image or it's load address, for
+ * cases where the distinction is not important.
+ */
+uintptr_t fit_image_get_entry_or_load(const void *blob, int node)
+{
+	ulong  val;
+	int ret;
+
+	ret = fit_image_get_entry(blob, node, &val);
+	if (ret)
+		ret = fit_image_get_load(blob, node, &val);
+
+	debug("%s: entry point 0x%lx ret %d\n", __func__, val, ret);
+	return val;
+}
+
+/**
+ * fit_image_find_os - find an image by OS
+ *
+ * @blob: pointer to the FIT image header
+ * @os: OS ID to search for
+ *
+ * Returns: node offset of the image with the given OS, or
+ * -FDT_ERR_NOTFOUND
+ */
+int fit_image_find_os(const void *blob, int os)
+{
+	int node, parent, ndepth = 0;
+	const void *data;
+
+	parent = fdt_path_offset(blob, FIT_IMAGES_PATH);
+
+	for (node = fdt_next_node(blob, parent, &ndepth);
+	     (node >= 0) && (ndepth > 0);
+	     node = fdt_next_node(blob, node, &ndepth)) {
+		if (ndepth != 1)
+			continue;
+
+		data = fdt_getprop(blob, node, FIT_OS_PROP, NULL);
+		if (!data)
+			continue;
+
+		if (genimg_get_os_id(data) == os)
+			return node;
+	};
+
+	return -FDT_ERR_NOTFOUND;
+}
+
+/**
  * fit_image_get_data - get data property and its size for a given component image node
  * @fit: pointer to the FIT format image header
  * @noffset: component image node offset
@@ -2177,7 +2232,8 @@ int fit_image_load(struct bootm_headers *images, ulong addr,
 		fit_image_check_os(fit, noffset, IH_OS_OPENRTOS) ||
 		fit_image_check_os(fit, noffset, IH_OS_EFI) ||
 		fit_image_check_os(fit, noffset, IH_OS_VXWORKS) ||
-		fit_image_check_os(fit, noffset, IH_OS_ELF);
+		fit_image_check_os(fit, noffset, IH_OS_ELF) ||
+		fit_image_check_os(fit, noffset, IH_OS_ARM_TRUSTED_FIRMWARE);
 
 	/*
 	 * If either of the checks fail, we should report an error, but
