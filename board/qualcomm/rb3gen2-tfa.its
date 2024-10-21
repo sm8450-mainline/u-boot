@@ -1,0 +1,72 @@
+/*
+ * This FIT configuration is used for development on the RB3 Gen 2. A
+ * U-Boot image is flashed to the TZ partition, it starts in EL3 and allows
+ * for the FIT image to be booted with "fastboot boot".
+ */
+
+/dts-v1/;
+
+/ {
+	description = "Configuration to boot TF-A, OP-TEE and U-Boot on RB3 Gen 2";
+	#address-cells = <1>;
+
+	images {
+		tfa {
+			description = "TF-A";
+			data = /incbin/("../../.output/bl31.bin");
+			type = "kernel";
+			arch = "arm";
+			os = "arm-trusted-firmware";
+			compression = "none";
+			load = <0x1c00e000>;
+			entry = <0x1c00e000>;
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+
+		// optee {
+		// 	description = "OP-TEE";
+		// 	data = /incbin/("../../.output/bl32.bin");
+		// 	type = "kernel";
+		// 	arch = "arm";
+		// 	os = "arm-trusted-firmware";
+		// 	compression = "none";
+		// 	load = <0x1c00e000>;
+		// 	entry = <0x1c00e000>;
+		// 	hash-1 {
+		// 		algo = "sha256";
+		// 	};
+		// };
+
+		/*
+		 * This image clobbers the U-Boot image loaded from the
+		 * uefi partition, it can be excluded to run that one instead
+		 */
+		uboot {
+			description = "U-Boot itself";
+			data = /incbin/("../../.output/u-boot-dtb.bin");
+			type = "kernel";
+			arch = "arm";
+			os = "u-boot";
+			compression = "none";
+			load = <0x9fc00000>;
+			entry = <0x9fc00000>;
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+	};
+
+	configurations {
+		default = "config-1";
+
+		config-1 {
+			description = "Boot the thing";
+			kernel = "tfa";
+			// U-Boot brings its own FDT
+			// fdt = "fdt-1";
+			loadables = "uboot"; //, "optee";
+		};
+	};
+};
